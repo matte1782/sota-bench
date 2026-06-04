@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sota_bench"
+version = "0.1.0"
+description = "An open, model-agnostic benchmark for agent tool-dispatch authorization-confusion vulnerability detection and severity calibration."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "sota_bench contributors" }]
+keywords = [
+    "security",
+    "benchmark",
+    "authorization",
+    "agent",
+    "mcp",
+    "vulnerability-detection",
+    "cvss",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+]
+# CORE is STDLIB-ONLY. No runtime dependencies.
+dependencies = []
+
+[project.optional-dependencies]
+# Optional adapter for the Inspect eval framework. Not required by the core.
+inspect = ["inspect_ai"]
+# Developer tooling.
+dev = ["pytest>=7", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/sota-bench/sota_bench"
+Repository = "https://github.com/sota-bench/sota_bench"
+
+[tool.setuptools]
+packages = ["sota_bench", "sota_bench.adapters"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
