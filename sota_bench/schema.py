@@ -14,6 +14,7 @@ authoring errors surface immediately.
 
 from __future__ import annotations
 
+import datetime
 import json
 from dataclasses import dataclass, fields
 from typing import Any, Final
@@ -77,6 +78,29 @@ class BenchEntry:
     realized_outcome: str
     public_url: str | None
     notes: str
+
+    # --- Provenance (optional; absent in the source defaults to None) ----------
+    # These are append-only-corpus metadata. They are OPTIONAL so legacy rows
+    # validate unchanged; a missing key is None ("unsourced"), NEVER a guessed
+    # value. ``evidence_date`` is the ISO date (YYYY-MM-DD) of the EARLIEST public
+    # artifact for this finding (the fix commit / patch PR, which predates the
+    # CVE/advisory), used by the contamination gate. ``added_in_corpus_version``
+    # records the slice that introduced the row. ``supersedes`` names the
+    # finding_id this row corrects (corrections are new rows, never in-place edits).
+    evidence_date: str | None = None
+    added_in_corpus_version: str | None = None
+    supersedes: str | None = None
+
+    # --- Embargo / live-verification metadata (optional) -----------------------
+    # The last live-checked disclosure state of a finding, so a vuln row carries
+    # its own do-not-publish guard. ADVISORY ONLY: per the embargo gate the
+    # authoritative signal is always a FRESH live ``state`` check, NEVER these
+    # stored strings (the ``embargo`` note text says exactly this). Optional +
+    # default None so secure rows and legacy rows validate unchanged.
+    verified_state: str | None = None  # last live-checked state, e.g. "triage"/"published"
+    verified_public: bool | None = None  # confirmed present in the global advisory DB?
+    verified_at: str | None = None  # ISO date (YYYY-MM-DD) of that live check
+    embargo: str | None = None  # human-readable embargo guard note
 
 
 @dataclass(frozen=True)
@@ -147,6 +171,55 @@ def _require_str_or_none(d: dict[str, Any], key: str) -> str | None:
     return value
 
 
+def _optional_str_or_none(d: dict[str, Any], key: str) -> str | None:
+    """Return ``d[key]`` as ``str`` or ``None``; a MISSING key also yields ``None``.
+
+    Unlike :func:`_require_str_or_none`, the key may be absent (it defaults to
+    ``None``), which is what makes the provenance fields optional so legacy rows
+    validate unchanged.
+    """
+    if key not in d:
+        return None
+    return _require_str_or_none(d, key)
+
+
+def _optional_bool(d: dict[str, Any], key: str) -> bool | None:
+    """Return ``d[key]`` as a ``bool`` or ``None``; a MISSING key also yields ``None``.
+
+    Used for optional verification flags so legacy rows (which lack the key)
+    validate unchanged. A present value must be a real ``bool``; anything else
+    fails closed.
+    """
+    if key not in d:
+        return None
+    value = d[key]
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise ValueError(f"field {key!r} must be a boolean or null, got {type(value).__name__}")
+    return value
+
+
+def _optional_iso_date(d: dict[str, Any], key: str) -> str | None:
+    """Return ``d[key]`` as a validated ``YYYY-MM-DD`` string, or ``None``.
+
+    A missing key or explicit null yields ``None`` (unsourced). When present, the
+    value must parse as an ISO calendar date; an unparseable date fails closed so
+    a garbage date can never enter the provenance record.
+
+    Raises:
+        ValueError: If present but not a string, or not a valid ISO date.
+    """
+    value = _optional_str_or_none(d, key)
+    if value is None:
+        return None
+    try:
+        datetime.date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"field {key!r} must be an ISO date (YYYY-MM-DD), got {value!r}") from exc
+    return value
+
+
 def validate_entry(d: dict[str, Any]) -> BenchEntry:
     """Validate a raw mapping and build a :class:`BenchEntry`.
 
@@ -189,6 +262,13 @@ def validate_entry(d: dict[str, Any]) -> BenchEntry:
         realized_outcome=_require_str(d, "realized_outcome"),
         public_url=_require_str_or_none(d, "public_url"),
         notes=_require_str(d, "notes"),
+        evidence_date=_optional_iso_date(d, "evidence_date"),
+        added_in_corpus_version=_optional_str_or_none(d, "added_in_corpus_version"),
+        supersedes=_optional_str_or_none(d, "supersedes"),
+        verified_state=_optional_str_or_none(d, "verified_state"),
+        verified_public=_optional_bool(d, "verified_public"),
+        verified_at=_optional_iso_date(d, "verified_at"),
+        embargo=_optional_str_or_none(d, "embargo"),
     )
 
 

@@ -1,7 +1,9 @@
 # sota_bench SOTA-validation DELTA loop, PROTOCOL
 
-**Status:** pre-registered. **Format version:** 1. **Scope:** the `authz`/`decode`
-verticals defined in `sota_bench/schema.py`.
+**Status:** pre-registered. **Format version:** 2 (see *Pre-registered amendments
+— format version 2 (L1–L5)* and the L6 target-value gate at the end; the v1
+sections below are retained as the historical record). **Scope:** the
+`authz`/`decode` verticals defined in `sota_bench/schema.py`.
 
 This document specifies, in advance, exactly how `sota_bench` measures whether a
 method (a detection scaffold, agent, or pipeline) adds value *on top of a naive
@@ -160,11 +162,11 @@ had `code_located: true`** in both sets (the agent reached and read the target
 dispatch site for every item).
 
 **Headline: the method did NOT beat naive on the full labeled set, naive was strictly
-better on detection.** naive recall 1.00 / precision 1.00 / fp_rate 0.00 /
-Youden J 1.00 / pairwise 1.00; method recall 0.80 / precision 0.80 /
-fp_rate 0.10 / Youden J 0.70 / pairwise 0.72. Signed delta (method − naive):
-recall −0.200, precision −0.200, fp_rate +0.100, Youden J −0.300, pairwise
-−0.280, inflation_mae +0.633, deflation_mae +0.413.
+better on detection.** naive recall 0.833 / precision 1.00 / fp_rate 0.00 /
+Youden J 0.833 / pairwise 0.833; method recall 0.667 / precision 0.80 /
+fp_rate 0.10 / Youden J 0.567 / pairwise 0.60. Signed delta (method − naive):
+recall −0.167, precision −0.200, fp_rate +0.100, Youden J −0.267, pairwise
+−0.233, inflation_mae +0.594, deflation_mae +0.388.
 
 The method's extra runtime-gating skepticism flipped two calls the wrong way on
 this set. One was a false negative on an embargoed target (the method cleared a
@@ -174,7 +176,7 @@ once the advisory is public. The other was a false positive on
 `authz-anythingllm-shared-carveout`, flagged as `vuln` although it is a
 by-design shared capability. It also widened severity error in both directions.
 Note the `vd_s` reading on this set: naive meets the FPR cap (achieved 0.0 ≤
-0.005, so vd_s = 1 − recall = 0.0, since naive caught every positive) while
+0.005, so vd_s = 1 − recall = 0.167) while
 method's achieved FPR 0.10 exceeds the cap, so its `vd_s` is *undefined* and
 surfaces as 0.0 in the flattened map. Read the structured `ScoreResult`, not the
 flattened map, to keep an undefined rate apart from a genuine zero.
@@ -217,10 +219,10 @@ ground truth.
 - **Live-reran: a strict subset of the covered findings** (fresh stacks brought up
   and torn down; fresh per-run sentinels).
 - **Recorded-evidence only: the remaining covered findings.** Their live re-run was
-  not performed this session (the running containers were not available to
+  not performed in that recorded run (the running containers were not available to
   bootstrap into, and standing up the full multi-service stack was not feasible).
   Verdicts rest on the recorded oracle; **no NEW sentinel was minted through the
-  dispatch path this session** for those items.
+  dispatch path in that recorded run** for those items.
 - **Not covered: the AnythingLLM static FALSE POSITIVE.** The static method's
   *other* v1 error, `authz-anythingllm-shared-carveout` (static `vuln` vs
   ground-truth `secure`, a by-design shared capability), is **not** in this subset
@@ -232,3 +234,152 @@ ground truth.
 The naive-vs-method baselines and the labeled POSITIVE corpus underlying this
 runtime baseline are WITHHELD PENDING COORDINATED DISCLOSURE and will be published
 once the advisories are public.
+
+## Pre-registered amendments — format version 2 (L1–L5)
+
+Format version 2 hardens the protocol with five structural layers, each enforced
+in code (see the cited modules) and each tested. The on-disk pinned-baseline
+schema gains `dataset_hash`, `scorer_version`, and a `significance` block;
+`BenchEntry` gains optional `evidence_date`, `added_in_corpus_version`, and
+`supersedes`. Legacy v1 baselines and rows still load (the new fields default to
+non-comparable sentinels / `None`), so this amendment is additive.
+
+### L1 — Comparability binding (`sota_bench/loop.py`)
+
+- Every run records a content-addressed `dataset_hash` (SHA-256 of the exact
+  scored corpus, computed by the loop, NOT caller-supplied) and a
+  `scorer_version`. `dataset_fingerprint` is a human label only and is never the
+  comparability key.
+- `delta_vs_baseline` REFUSES to difference two runs unless their `dataset_hash`
+  AND `scorer_version` both match. A grown or relabeled corpus, or a changed
+  scorer, can never be silently differenced against an old pin; growth happens
+  only by minting a NEW fingerprinted pin and starting a new series.
+- `pin_baseline` is write-once: it refuses to overwrite a non-empty pin without an
+  explicit `overwrite=True`, so a frozen reference is a property of storage.
+- `scorer_version` MUST fold in every scoring parameter that can change a metric,
+  including the VD-S FPR cap (`vd_s_fpr_target`, default 0.005). Changing the cap
+  is a new `scorer_version` and forks a new comparison lineage.
+
+### L2 — Statistical honesty (`sota_bench/stats.py`)
+
+- The headline comparison is the paired method-vs-naive correctness over the SAME
+  findings, tested with McNemar's two-sided EXACT-BINOMIAL test — never a
+  chi-squared approximation, never a raw proportion difference.
+- **Primary metric (pre-registered): the signed delta on RECALL** (method recall
+  minus naive recall). It is always defined and maps directly onto the McNemar
+  paired correctness. All other metrics (precision, VD-S, Youden's J, pairwise,
+  calibration) are SECONDARY and their p-values are Holm-corrected. The primary
+  metric is fixed here so it cannot be chosen after seeing results.
+- **UNDERPOWERED is mandatory.** Below 10 discordant pairs (`MIN_DISCORDANT_PAIRS`)
+  no significance may be claimed: the `significance` block records `powered: 0` and
+  `significant: -1`, and the headline MUST carry the UNDERPOWERED label. At the
+  current corpus size this is the expected, honest state — the only durable fix is
+  more rows in naive-weak classes, not a different test.
+- Uncertainty is reported with Wilson score intervals (small-N-correct), never a
+  bare point estimate and never a bootstrap CI (anti-conservative at n ≤ 20).
+
+### L3 — Provenance and contamination (`sota_bench/provenance.py`, `schema.py`)
+
+- `evidence_date` is the ISO date of the EARLIEST public artifact for a finding —
+  the fix commit / patch PR, which predates the CVE/advisory by months. It is the
+  contamination anchor; the CVE/advisory date is NOT used because the patch
+  circulates first.
+- **Contamination gate.** A finding is eligible for a model release only if its
+  `evidence_date` is strictly AFTER that model's training cutoff. Rows with no
+  `evidence_date` are UNSOURCED and excluded (fail-safe): a missing date is never
+  read as safe, and is NEVER fabricated.
+- **Append-only corpus.** Rows are immutable; a correction is a NEW row carrying
+  `supersedes`, never an in-place edit. From version N to N+1,
+  `ids(vN) ⊆ ids(vN+1)` and shared rows are byte-identical (`assert_append_only`).
+
+### L4 — Slice-admission bar (`sota_bench/admission.py`)
+
+- A new slice / vertical is admissible only if (a) its naive baseline is committed
+  alongside it, (b) the naive baseline is WEAK — **naive recall < 0.5** on the
+  slice, (c) its metric key-set is ADDITIVE over any prior pinned baseline
+  (new metrics allowed; dropping or renaming a published key is not), and (d) the
+  gating metric is computed over **at least `MIN_SLICE_N = 10` items**
+  (`sample_n >= MIN_SLICE_N`; for the default recall metric, the count of
+  positive / `vuln` rows the naive recall was measured over).
+- The 0.5 bar is the pre-registered midpoint that cleanly separates the anchors:
+  authz naive recall 0.833 (REJECTED, commoditized — more raw-authz-detection rows
+  would dilute the signal) vs decode naive recall 0 (ADMITTED, the moat region).
+  It can change ONLY via a new `format_version`, so it cannot be tuned post-hoc.
+- The `MIN_SLICE_N = 10` floor (condition d) is the anti-anecdote lock: without it
+  a 1-row seed with naive recall 0 mechanically passes (a)–(c), so "naive-weak"
+  would be asserted from a single 1/1 naive-miss rather than a measured RATE
+  (disqualifier #6: n=1-treated-as-a-rate). The floor is **fail-safe** — a slice
+  whose `sample_n` is not supplied is REJECTED, never admitted on a missing signal
+  (mirrors the L3/L6 provenance fail-safe). It is pinned at 10 to align with the
+  L2 `MIN_DISCORDANT_PAIRS` significance floor and the pre-registered "n >= ~10"
+  calibrated-rate threshold, and changes ONLY via a new `format_version`. This is
+  exactly why `decode_v1` ships first as an UNDERPOWERED n=1 SEED (registered
+  "Planned", NOT admitted): admission waits until it carries >= 10 naive-scored
+  positives, the point at which naive-weakness becomes a rate rather than an anecdote.
+
+### L5 — Slice registry and salience (`SLICES.md`)
+
+- Every scored slice is registered in `SLICES.md` BEFORE its first scored run, with
+  its date and naive-weakness status. An unregistered `datasets/*.jsonl` slice
+  fails CI (`tests/test_protocol.py`).
+- **Publish ALL pinned slices' deltas every release — never a chosen subset.** The
+  L1–L4 structure guarantees each published number is internally honest, but it
+  cannot enforce WHICH number is headlined; this register-before-run +
+  publish-all rule is the salience guard, auditable via the registry's history.
+
+### L6 — Target-value (blast-radius) gate (`sota_bench/target_value.py`)
+
+Selection control for WHERE to hunt: a deterministic, STDLIB-ONLY, NO-LLM gate
+that values a target by real-world BLAST RADIUS and importance, so deep effort
+concentrates on production-grade, widely-depended-on software rather than
+high-severity-but-low-impact targets (a severity-over-importance ranking error, where
+a low-adoption project could be ranked PRIMARY purely on a high CVSS). Enforced in code and
+tested in `tests/test_target_value.py` (42 cases, offline).
+
+- **Primary signal: deps.dev `directDependentCount` at the package's `isDefault`
+  version** — reverse-dependency reach, i.e. the code a vulnerability would
+  actually expose. Empirically a better importance proxy than GitHub stars or
+  download counts (which measure attention/popularity, not reuse). The dependents
+  count is VERSION-specific (swings up to ~100x across versions), so the default
+  version MUST be resolved and pinned before querying; `score_target` records the
+  resolved version.
+- **Fallback signal: OpenSSF Criticality Score (0..1)** for raw repos / ecosystems
+  with no dependents endpoint (e.g. Go returns 404). It is passed IN (computed
+  out-of-band via the `ossf/criticality_score` CLI or the hosted CSV), never
+  inferred by a model.
+- **Tie-break only: package downloads** — recorded, but NEVER promote a tier
+  (weak, CI/mirror-inflated, actively gamed).
+
+**Pinned thresholds (project choices, fixed here so the tier cannot be tuned
+post-hoc; changeable ONLY via a new `format_version`):**
+- direct-dependents: `tier1 >= 5000`, `tier2 >= 500`, `tier3 >= 50` (`>=` test).
+- criticality (fallback): `tier1 >= 0.80`, `tier2 >= 0.60`, `tier3 >= 0.40`.
+- fast-reject: `direct_dependents < 50` AND (criticality unavailable OR `< 0.40`).
+- **Hunt rule:** PRIMARY requires `tier1` or `tier2`; `tier3` is opportunistic and
+  effort-capped (source-confirmed report, no full standup); `reject` is skipped.
+
+**Fail-safe invariants (mirror the L3 provenance fail-safe):**
+- A missing/absent signal is `None` ("unavailable"), NEVER coerced to `0` (which
+  would falsely trigger reject). `0` is a real measured value; `None` is absence.
+- When BOTH dependents and criticality are unavailable, the gate returns `reject`
+  with `manual_override_required=True` — absence of a deterministic importance
+  signal is never read as "important"; any override is a logged operator decision.
+- **Determinism is conditional.** `decide_tier` is a pure, total, clock-free,
+  network-free function (exhaustively unit-tested). The fetch layer pulls LIVE
+  signals that drift day-to-day, so `score_target` records `fetched_at` and
+  `resolved_version`; a re-run's divergence is attributable to source drift, not
+  code. Tests stub the HTTP call (no network).
+
+**Scope.** L6 selects WHERE to hunt (importance/blast radius). It does NOT replace
+L4 (naive-weak slice admission — does the class have method headroom) or L3
+(provenance / dedup / contamination). A high-blast-radius target can still yield a
+naive-aceable or duplicate slice; run all three.
+
+**Citations (verified 2026-06-06):** deps.dev dependents
+(`https://docs.deps.dev/api/v3alpha/`, live shape `{dependentCount,
+directDependentCount, indirectDependentCount}`); OpenSSF Criticality Score
+(`https://github.com/ossf/criticality_score`, Rob Pike weighted-arithmetic-mean);
+"stars/downloads mislead vs reverse-dependents" verified on requests/express/
+left-pad/react. SOTA grounding for the L4 naive-weak gate and the embargoed
+(model-cutoff-relative) row pattern: Risse et al. (arXiv 2408.12986), PrimeVul
+(arXiv 2403.18624), LiveCodeBench (arXiv 2403.07974).

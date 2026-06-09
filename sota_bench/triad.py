@@ -3,16 +3,16 @@
 This module is STDLIB-ONLY. It encodes two pure, deterministic checks the
 project uses to keep finding drafts honest:
 
-* :func:`triad_gate`, the project's **L31 rule**. A finding only clears the
+* :func:`triad_gate` — the project's **L31 rule**. A finding only clears the
   gate when *all three* impact axes hold: it crosses a lower trust boundary,
   it leaks a sensitive artifact, and it has a practical consequence. If any
   axis is false the finding is not rejected outright but flagged
   ``informative`` (a real observation that does not rise to a reportable
   impact), and the failing axes are named.
 
-* :func:`cia_concession_lint`, catches the self-contradiction where a draft
+* :func:`cia_concession_lint` — catches the self-contradiction where a draft
   *claims* real impact (disclosure, RCE, takeover, write, escalation, ...)
-  while *conceding* the corresponding CIA axis to ``None``, either via an
+  while *conceding* the corresponding CIA axis to ``None`` — either via an
   explicit ``Confidentiality: None`` style phrasing or via a CVSS vector that
   scores the axis ``C:N`` / ``I:N`` / ``A:N``. Such a draft is internally
   inconsistent and hard-FAILs the lint.
@@ -159,7 +159,7 @@ def cia_concession_lint(text: str, cvss_vector: str | None = None) -> dict[str, 
     """Flag drafts that claim impact while conceding the matching CIA axis.
 
     A draft hard-FAILs when it asserts a concrete impact on a CIA axis (via an
-    impact keyword) yet concedes that same axis to ``None``, either through
+    impact keyword) yet concedes that same axis to ``None`` — either through
     the CVSS vector (``C:N``/``I:N``/``A:N``) or explicit prose
     (``Confidentiality: None`` etc.). This catches the common
     self-contradiction of, e.g., describing "information disclosure" under a

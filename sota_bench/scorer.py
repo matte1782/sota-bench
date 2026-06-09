@@ -114,7 +114,7 @@ class ScoreResult:
         None-handling convention: the optional detection/ranking rates
         (``recall``, ``precision``, ``specificity``, ``fp_rate``, ``youden_j``,
         ``vd_s``, ``vd_s_achieved_fpr``, ``pairwise_accuracy``) are ``None`` only
-        when their denominator is empty, i.e. the metric is *undefined* for this
+        when their denominator is empty — i.e. the metric is *undefined* for this
         run, not measured-as-zero. For the purpose of a flat numeric delta we map
         every such ``None`` to ``0.0``. This is a deliberate, lossy flattening:
         an undefined rate and a genuinely-zero rate both surface as ``0.0`` here,

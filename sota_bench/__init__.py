@@ -26,6 +26,13 @@ from sota_bench.schema import (
     load_dataset,
     validate_entry,
 )
+from sota_bench.target_value import (
+    TargetValueReport,
+    decide_tier,
+    fetch_dependents,
+    resolve_default_version,
+    score_target,
+)
 
 __all__ = [
     "VERTICALS",
@@ -36,6 +43,11 @@ __all__ = [
     "Prediction",
     "validate_entry",
     "load_dataset",
+    "TargetValueReport",
+    "decide_tier",
+    "score_target",
+    "resolve_default_version",
+    "fetch_dependents",
 ]
 
 __version__ = "0.1.0"
