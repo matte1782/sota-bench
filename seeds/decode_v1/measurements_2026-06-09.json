@@ -1,0 +1,31 @@
+{
+  "seed": "decode_v1",
+  "date": "2026-06-09",
+  "status": "SEED / n=3 / UNDERPOWERED (recall-only; no secure/negative decode rows yet)",
+  "protocol": "blind, code-only, no-advisory-lookup clean-room; undirected naive vs decode-completeness-forcing-function method; non-LLM label scoring",
+  "findings": [
+    {"id": "decode-monetrix-m01-suppliedbalance", "domain": "Solidity/DeFi", "subtle": true, "naive": "secure (MISS, mis-diagnosed alternative)", "method": "vuln (HIT)", "method_edge": true},
+    {"id": "decode-kora-ghsa-x442-emptystub", "domain": "Rust/Solana", "subtle": true, "naive": "secure (MISS, reached stub but ruled out bypass)", "method": "vuln (HIT, 0.74)", "method_edge": true},
+    {"id": "decode-debita-pyth-expo-CONTROL", "domain": "Solidity/oracle", "subtle": false, "naive": "vuln (HIT)", "method": "vuln (HIT, 0.86)", "method_edge": false}
+  ],
+  "score_n3": {
+    "ground_truth": "all 3 are vuln (positives)",
+    "naive_recall": "1/3 = 0.333",
+    "method_recall": "3/3 = 1.000",
+    "signed_delta_recall": "+0.667 (method - naive)",
+    "interpretation": "On this n=3 positive-only seed the method out-detects naive, BUT the entire edge is on the 2 SUBTLE cases (naive reaches the decode and rules it out); on the 1 eyeball-able case (Debita expo) naive also catches it. The method's value is specifically subtlety, not a blanket method>naive."
+  },
+  "honesty_caveats": [
+    "UNDERPOWERED: n=3 << MIN_SLICE_N=10. 3 findings is suggestive, NOT a calibrated rate. admission.py mechanically blocks promotion to a scored slice.",
+    "RECALL-ONLY: all 3 rows are POSITIVES. There are NO secure/negative decode rows yet (a correct decode that looks droppable). So PRECISION / FP-rate is UNMEASURED -- the method flagged vuln on all 3, and we cannot yet see whether it over-flags correct decodes. The decode corpus needs secure siblings before any precision claim (this is the authz_v1 secure-twin discipline, not yet applied to decode).",
+    "ANTI-SURVIVORSHIP: the Debita control was included deliberately as a real decode bug where naive is NOT fooled, so the corpus is not cherry-picked to method-wins (disqualifier #9).",
+    "CONTAMINATION: clean-room agents were blind/code-only/no-web; a first Monetrix naive run was discarded for a leaked-direction prompt (see run_2026-06-09.json).",
+    "COMMODITIZATION WATCH (NORTH_STAR): the method edge is the systematic field-enumeration discipline; track whether a future naive frontier call starts doing it spontaneously. On Kora the naive even located the dropped fields and still ruled it secure -- the discipline gap, not a knowledge gap.",
+    "GROWTH: the strict subtle-decode class is RARE in public disclosures (the corpus-hunt workflow ruthlessly cut almost everything). Reaching n>=10 is a multi-session program; the most productive vein found = HyperEVM/HyperCore precompile-read integrators (the spot-balance tuple's value-reducing 'hold' leg is a likely sibling pattern)."
+  ],
+  "next": [
+    "Add SECURE/negative decode rows (correct decodes that look field-droppable) to enable precision/FP measurement.",
+    "Grow positives toward n>=10 via the reusable decode-corpus-hunt workflow; verify each evidence_date (Kora/Debita advisory publish dates).",
+    "Only THEN register decode_v1 in SLICES.md + ship a naive baseline in the same commit + pass L4 admission."
+  ]
+}

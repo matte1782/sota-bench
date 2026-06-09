@@ -1,0 +1,47 @@
+{
+  "seed": "decode_v1",
+  "date": "2026-06-09",
+  "status": "SEED / n=1 / UNDERPOWERED",
+  "headline": "Clean-room, code-only, blind: undirected NAIVE MISSED the decode bug (diagnosed a plausible-but-wrong alternative); decode-completeness METHOD CAUGHT it. method recall 1/1, naive recall 0/1 on this single finding. n=1 -> suggestive, NOT a calibrated rate.",
+  "anchor": {
+    "finding_id": "decode-monetrix-m01-suppliedbalance",
+    "ground_truth": "vuln",
+    "repo_at_sha": "code-423n4/2026-04-monetrix@3d94be1361ca01d959f9165a78f0d75c5657fe3e",
+    "site": "src/core/PrecompileReader.sol:90 (suppliedBalance, 0x811 read)",
+    "public": "Code4rena 2026-04-monetrix M-01 (Medium), 36 wardens; report public"
+  },
+  "protocol": {
+    "type": "blind, code-only, no-advisory-lookup clean-room (matches the prior SOTA-validation protocol)",
+    "naive_definition": "undirected single competent audit pass over the core source; find the single most severe vulnerability; NO hint about decoding/the answer area; code-only, no web",
+    "method_definition": "same source, plus the decode-completeness FORCING FUNCTION: for every external/precompile read, recover the full wire schema and check whether any VALUE-REDUCING field is dropped/mis-indexed; trace downstream. (The forcing function is the method, not the answer.)",
+    "scorer": "non-LLM: predicted_label vs ground_truth (the sota_bench.scorer discipline)"
+  },
+  "predictions": {
+    "naive_undirected": {
+      "predicted_label": "secure",
+      "caught_m01": false,
+      "what_it_said": "Rank1 = settle/distributeYield against MTM/illiquid backing -> peg break (Medium); Rank2 = a spot-vs-supplied DOUBLE-COUNT in backing (reached the 0x811 read but framed it as double-count, NOT the dropped-debt-leg decode); Rank3 = operator-controlled hedge prices. Did NOT identify the dropped borrow leg.",
+      "note": "Reached the 0x811 site and ruled out a decode bug, converging on the same plausible-but-wrong alternative class as the SOTA naive finders. The audit was THOROUGH (37 tool calls, multi-file trace) and still missed it.",
+      "tool_calls": 37
+    },
+    "method": {
+      "predicted_label": "vuln",
+      "caught_m01": true,
+      "confidence": 0.82,
+      "what_it_said": "Per-read schema enumeration across all precompile reads identified 0x811 suppliedBalance as the ONLY value-reducing-field-dropped case: takes word[3]=supplied, drops the leading borrow/debt field; traced to totalBackingSigned() over-count -> distributeYield phantom yield. Located PrecompileReader.sol:90.",
+      "tool_calls": 22
+    }
+  },
+  "score_n1": {
+    "naive_recall": "0/1",
+    "method_recall": "1/1",
+    "signed_delta_recall_n1": "+1.0 (method - naive) on this single finding",
+    "interpretation": "On THIS one decode finding the method beats naive on detection. n=1 => suggestive, NOT a rate. To become a calibrated rate this needs >= MIN_SLICE_N (=10) discordant decode findings; the admission floor mechanically blocks promotion until then."
+  },
+  "honesty_corrections": [
+    "DISCARDED a FIRST naive run as CONTAMINATED: its prompt explicitly asked 'is there a bug in how a precompile read is DECODED (a dropped/mis-indexed field)?', leaking the answer direction. Under that leak BOTH naive and method flagged M-01 (naive 0.62), which would have falsely shown no method edge OR a contaminated naive hit. The undirected re-run above is the valid measurement.",
+    "The naive baseline here is a THOROUGH multi-file audit, which is a HARDER bar than a strict single-pass 'naive single call'; the method still won, so the edge is the systematic field-enumeration discipline, not naive under-resourcing. If anything, a stricter single-pass naive would be even more likely to miss.",
+    "This is the ONE in-hand class where the method wins; the authz_v1 pinned baseline is the inverse anchor where the method LOST (naive 0.833 > method 0.667). Lead with the loss; this decode win is a single UNDERPOWERED datapoint."
+  ],
+  "admission": "NOT registered in SLICES.md (stays Planned/seed). datasets/ does not contain decode_v1.jsonl; this seed lives under seeds/ so CI does not treat it as a shipped slice. admission.py MIN_SLICE_N=10 floor rejects any 1-row slice (disqualifier #6)."
+}
