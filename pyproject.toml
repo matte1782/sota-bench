@@ -32,6 +32,9 @@ classifiers = [
 # CORE is STDLIB-ONLY. No runtime dependencies.
 dependencies = []
 
+[project.scripts]
+sota-bench = "sota_bench.__main__:main"
+
 [project.optional-dependencies]
 # Optional adapter for the Inspect eval framework. Not required by the core.
 inspect = ["inspect_ai"]
@@ -39,8 +42,8 @@ inspect = ["inspect_ai"]
 dev = ["pytest>=7", "ruff"]
 
 [project.urls]
-Homepage = "https://github.com/sota-bench/sota_bench"
-Repository = "https://github.com/sota-bench/sota_bench"
+Homepage = "https://github.com/matte1782/sota-bench"
+Repository = "https://github.com/matte1782/sota-bench"
 
 [tool.setuptools]
 packages = ["sota_bench", "sota_bench.adapters"]
