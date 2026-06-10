@@ -86,6 +86,20 @@ def test_validate_entry_nullable_fields_accept_none() -> None:
     assert entry.public_url is None
 
 
+def test_validate_entry_excluded_from_scoring_optional_bool() -> None:
+    """excluded_from_scoring defaults to None, accepts a bool, rejects non-bool."""
+    # Absent -> None, so legacy rows validate unchanged.
+    assert validate_entry(_good_entry_dict()).excluded_from_scoring is None
+    # An explicit bool is kept.
+    d = _good_entry_dict()
+    d["excluded_from_scoring"] = True
+    assert validate_entry(d).excluded_from_scoring is True
+    # A non-bool fails closed and names the field.
+    d_bad = _good_entry_dict()
+    d_bad["excluded_from_scoring"] = "true"
+    _assert_raises_value_error(lambda: validate_entry(d_bad), contains="excluded_from_scoring")
+
+
 def test_validate_entry_is_frozen() -> None:
     """BenchEntry is immutable (frozen dataclass)."""
     entry = validate_entry(_good_entry_dict())

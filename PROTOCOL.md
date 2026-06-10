@@ -1,8 +1,10 @@
 # sota_bench SOTA-validation DELTA loop, PROTOCOL
 
-**Status:** pre-registered. **Format version:** 2 (see *Pre-registered amendments
-— format version 2 (L1–L5)* and the L6 target-value gate at the end; the v1
-sections below are retained as the historical record). **Scope:** the
+**Status:** pre-registered. **Format version:** 3 (additive bump; see the
+format-version-2 amendments (L1-L5) and the L6 target-value gate, then the
+format-version-3 carve-out (L7) at the end. All earlier sections, including the
+"corpus is PRIVATE and dated" text below, are retained UNCHANGED as the historical
+record; L7 re-scopes them, it does not rewrite them). **Scope:** the
 `authz`/`decode` verticals defined in `sota_bench/schema.py`.
 
 This document specifies, in advance, exactly how `sota_bench` measures whether a
@@ -83,6 +85,11 @@ never as the headline.
   `load_baseline` refuses a future version rather than misreading it.
 
 ## The corpus is PRIVATE and dated
+
+> Re-scoped by the format-version-3 carve-out (L7) at the end of this document: the
+> privacy invariant below binds to SCORED, held-out slices only, and the public
+> decode demo (`seeds/decode_v1/`) is non-scored public by design. The original text
+> is retained here unchanged as the historical record.
 
 - The scored corpus is **private** and **dated**. Only the signed deltas (and, as
   context, aggregate metrics) are published, never the labeled items. This keeps
@@ -235,7 +242,7 @@ The naive-vs-method baselines and the labeled POSITIVE corpus underlying this
 runtime baseline are WITHHELD PENDING COORDINATED DISCLOSURE and will be published
 once the advisories are public.
 
-## Pre-registered amendments — format version 2 (L1–L5)
+## Pre-registered amendments, format version 2 (L1-L5)
 
 Format version 2 hardens the protocol with five structural layers, each enforced
 in code (see the cited modules) and each tested. The on-disk pinned-baseline
@@ -244,7 +251,7 @@ schema gains `dataset_hash`, `scorer_version`, and a `significance` block;
 `supersedes`. Legacy v1 baselines and rows still load (the new fields default to
 non-comparable sentinels / `None`), so this amendment is additive.
 
-### L1 — Comparability binding (`sota_bench/loop.py`)
+### L1: Comparability binding (`sota_bench/loop.py`)
 
 - Every run records a content-addressed `dataset_hash` (SHA-256 of the exact
   scored corpus, computed by the loop, NOT caller-supplied) and a
@@ -260,10 +267,10 @@ non-comparable sentinels / `None`), so this amendment is additive.
   including the VD-S FPR cap (`vd_s_fpr_target`, default 0.005). Changing the cap
   is a new `scorer_version` and forks a new comparison lineage.
 
-### L2 — Statistical honesty (`sota_bench/stats.py`)
+### L2: Statistical honesty (`sota_bench/stats.py`)
 
 - The headline comparison is the paired method-vs-naive correctness over the SAME
-  findings, tested with McNemar's two-sided EXACT-BINOMIAL test — never a
+  findings, tested with McNemar's two-sided EXACT-BINOMIAL test, never a
   chi-squared approximation, never a raw proportion difference.
 - **Primary metric (pre-registered): the signed delta on RECALL** (method recall
   minus naive recall). It is always defined and maps directly onto the McNemar
@@ -273,14 +280,14 @@ non-comparable sentinels / `None`), so this amendment is additive.
 - **UNDERPOWERED is mandatory.** Below 10 discordant pairs (`MIN_DISCORDANT_PAIRS`)
   no significance may be claimed: the `significance` block records `powered: 0` and
   `significant: -1`, and the headline MUST carry the UNDERPOWERED label. At the
-  current corpus size this is the expected, honest state — the only durable fix is
+  current corpus size this is the expected, honest state, the only durable fix is
   more rows in naive-weak classes, not a different test.
 - Uncertainty is reported with Wilson score intervals (small-N-correct), never a
   bare point estimate and never a bootstrap CI (anti-conservative at n ≤ 20).
 
-### L3 — Provenance and contamination (`sota_bench/provenance.py`, `schema.py`)
+### L3: Provenance and contamination (`sota_bench/provenance.py`, `schema.py`)
 
-- `evidence_date` is the ISO date of the EARLIEST public artifact for a finding —
+- `evidence_date` is the ISO date of the EARLIEST public artifact for a finding -
   the fix commit / patch PR, which predates the CVE/advisory by months. It is the
   contamination anchor; the CVE/advisory date is NOT used because the patch
   circulates first.
@@ -292,23 +299,23 @@ non-comparable sentinels / `None`), so this amendment is additive.
   `supersedes`, never an in-place edit. From version N to N+1,
   `ids(vN) ⊆ ids(vN+1)` and shared rows are byte-identical (`assert_append_only`).
 
-### L4 — Slice-admission bar (`sota_bench/admission.py`)
+### L4: Slice-admission bar (`sota_bench/admission.py`)
 
 - A new slice / vertical is admissible only if (a) its naive baseline is committed
-  alongside it, (b) the naive baseline is WEAK — **naive recall < 0.5** on the
+  alongside it, (b) the naive baseline is WEAK, **naive recall < 0.5** on the
   slice, (c) its metric key-set is ADDITIVE over any prior pinned baseline
   (new metrics allowed; dropping or renaming a published key is not), and (d) the
   gating metric is computed over **at least `MIN_SLICE_N = 10` items**
   (`sample_n >= MIN_SLICE_N`; for the default recall metric, the count of
   positive / `vuln` rows the naive recall was measured over).
 - The 0.5 bar is the pre-registered midpoint that cleanly separates the anchors:
-  authz naive recall 0.833 (REJECTED, commoditized — more raw-authz-detection rows
+  authz naive recall 0.833 (REJECTED, commoditized, more raw-authz-detection rows
   would dilute the signal) vs decode naive recall 0 (ADMITTED, the moat region).
   It can change ONLY via a new `format_version`, so it cannot be tuned post-hoc.
 - The `MIN_SLICE_N = 10` floor (condition d) is the anti-anecdote lock: without it
-  a 1-row seed with naive recall 0 mechanically passes (a)–(c), so "naive-weak"
+  a 1-row seed with naive recall 0 mechanically passes (a)-(c), so "naive-weak"
   would be asserted from a single 1/1 naive-miss rather than a measured RATE
-  (disqualifier #6: n=1-treated-as-a-rate). The floor is **fail-safe** — a slice
+  (disqualifier #6: n=1-treated-as-a-rate). The floor is **fail-safe**, a slice
   whose `sample_n` is not supplied is REJECTED, never admitted on a missing signal
   (mirrors the L3/L6 provenance fail-safe). It is pinned at 10 to align with the
   L2 `MIN_DISCORDANT_PAIRS` significance floor and the pre-registered "n >= ~10"
@@ -317,17 +324,17 @@ non-comparable sentinels / `None`), so this amendment is additive.
   "Planned", NOT admitted): admission waits until it carries >= 10 naive-scored
   positives, the point at which naive-weakness becomes a rate rather than an anecdote.
 
-### L5 — Slice registry and salience (`SLICES.md`)
+### L5: Slice registry and salience (`SLICES.md`)
 
 - Every scored slice is registered in `SLICES.md` BEFORE its first scored run, with
   its date and naive-weakness status. An unregistered `datasets/*.jsonl` slice
   fails CI (`tests/test_protocol.py`).
-- **Publish ALL pinned slices' deltas every release — never a chosen subset.** The
-  L1–L4 structure guarantees each published number is internally honest, but it
+- **Publish ALL pinned slices' deltas every release, never a chosen subset.** The
+  L1-L4 structure guarantees each published number is internally honest, but it
   cannot enforce WHICH number is headlined; this register-before-run +
   publish-all rule is the salience guard, auditable via the registry's history.
 
-### L6 — Target-value (blast-radius) gate (`sota_bench/target_value.py`)
+### L6: Target-value (blast-radius) gate (`sota_bench/target_value.py`)
 
 Selection control for WHERE to hunt: a deterministic, STDLIB-ONLY, NO-LLM gate
 that values a target by real-world BLAST RADIUS and importance, so deep effort
@@ -337,7 +344,7 @@ a low-adoption project could be ranked PRIMARY purely on a high CVSS). Enforced 
 tested in `tests/test_target_value.py` (42 cases, offline).
 
 - **Primary signal: deps.dev `directDependentCount` at the package's `isDefault`
-  version** — reverse-dependency reach, i.e. the code a vulnerability would
+  version**, reverse-dependency reach, i.e. the code a vulnerability would
   actually expose. Empirically a better importance proxy than GitHub stars or
   download counts (which measure attention/popularity, not reuse). The dependents
   count is VERSION-specific (swings up to ~100x across versions), so the default
@@ -347,7 +354,7 @@ tested in `tests/test_target_value.py` (42 cases, offline).
   with no dependents endpoint (e.g. Go returns 404). It is passed IN (computed
   out-of-band via the `ossf/criticality_score` CLI or the hosted CSV), never
   inferred by a model.
-- **Tie-break only: package downloads** — recorded, but NEVER promote a tier
+- **Tie-break only: package downloads**, recorded, but NEVER promote a tier
   (weak, CI/mirror-inflated, actively gamed).
 
 **Pinned thresholds (project choices, fixed here so the tier cannot be tuned
@@ -362,7 +369,7 @@ post-hoc; changeable ONLY via a new `format_version`):**
 - A missing/absent signal is `None` ("unavailable"), NEVER coerced to `0` (which
   would falsely trigger reject). `0` is a real measured value; `None` is absence.
 - When BOTH dependents and criticality are unavailable, the gate returns `reject`
-  with `manual_override_required=True` — absence of a deterministic importance
+  with `manual_override_required=True`, absence of a deterministic importance
   signal is never read as "important"; any override is a logged operator decision.
 - **Determinism is conditional.** `decide_tier` is a pure, total, clock-free,
   network-free function (exhaustively unit-tested). The fetch layer pulls LIVE
@@ -371,7 +378,7 @@ post-hoc; changeable ONLY via a new `format_version`):**
   code. Tests stub the HTTP call (no network).
 
 **Scope.** L6 selects WHERE to hunt (importance/blast radius). It does NOT replace
-L4 (naive-weak slice admission — does the class have method headroom) or L3
+L4 (naive-weak slice admission, does the class have method headroom) or L3
 (provenance / dedup / contamination). A high-blast-radius target can still yield a
 naive-aceable or duplicate slice; run all three.
 
@@ -383,3 +390,42 @@ directDependentCount, indirectDependentCount}`); OpenSSF Criticality Score
 left-pad/react. SOTA grounding for the L4 naive-weak gate and the embargoed
 (model-cutoff-relative) row pattern: Risse et al. (arXiv 2408.12986), PrimeVul
 (arXiv 2403.18624), LiveCodeBench (arXiv 2403.07974).
+
+## Pre-registered amendment, format version 3 (L7: public demo carve-out)
+
+Dated 2026-06-10. Additive. This amendment does not rewrite any earlier section or
+threshold; it re-scopes the privacy invariant and records the structural control.
+The original "The corpus is PRIVATE and dated" section, and the full commit history
+(including the commit that first published the decode demo answer keys), are retained
+as the historical record. Nothing is retconned.
+
+### L7.1 The privacy invariant binds to SCORED slices only
+
+The "corpus is PRIVATE and dated" rule applies to SCORED, held-out slices: the
+labeled items behind a published delta are not released while that slice is the
+held-out test. It does NOT mean every artifact in the repository is secret. The
+durability of a scored slice comes from DATE, not secrecy: per the L3 contamination
+gate a finding is scored against a model only if its `evidence_date` is strictly
+after that model's training cutoff, so a label can be fully public and still a valid
+held-out test for every model whose cutoff predates it.
+
+### L7.2 The decode demo is non-scored public by design
+
+The `seeds/decode_v1/` rows are a PUBLIC DEMO / CALIBRATION set, not a scored slice.
+They are already-public, previously-disclosed findings, shipped WITH their answer
+keys as a worked illustration, and each carries `excluded_from_scoring: true`. They
+are permanently non-scoreable: their labels are public and their evidence dates
+predate current model cutoffs. Publishing them does not violate L7.1 because they are
+not a held-out test. This records the status of content first published in the seed
+commit; it is a reclassification of already-public material, not a new disclosure.
+
+### L7.3 The publication firewall is the structural control
+
+The boundary between public and held-out content is enforced in code and CI by the
+publication firewall (`sota_bench/publication_firewall.py`,
+`tests/test_publication_firewall.py`, `.github/workflows/ci.yml`), and documented,
+with its breach playbook, in `PUBLICATION_FIREWALL.md`. It is a path-allowlist that
+fails closed and never trusts a per-row self-flag: a scoreable `vuln` answer key
+outside the explicit demo allowlist fails the build. The firewall is the structural
+layer; the embargo gate (a live disclosure-state check) and operator review are the
+complementary layers.

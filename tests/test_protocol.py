@@ -34,10 +34,21 @@ def _read(path: str) -> str:
 # --- PROTOCOL.md ------------------------------------------------------------
 
 
-def test_protocol_declares_format_version_2() -> None:
-    """The protocol header marks itself format version 2."""
+def test_protocol_declares_format_version_3() -> None:
+    """The protocol header marks itself format version 3 (additive bump over v2)."""
     text = _read(_PROTOCOL_PATH)
-    assert "Format version:** 2" in text
+    assert "Format version:** 3" in text
+    # The format-version-2 amendments are retained as the historical record (no retcon).
+    assert "format version 2 (L1" in text
+
+
+def test_protocol_v3_carveout_present_and_additive() -> None:
+    """The v3 public-demo carve-out exists as an amendment and retains v2 text."""
+    text = _read(_PROTOCOL_PATH)
+    assert "format version 3 (L7" in text
+    # Re-scopes, does not rewrite: the original private-corpus section is still here.
+    assert "## The corpus is PRIVATE and dated" in text
+    assert "non-scored public by design" in text
 
 
 def test_protocol_pre_registers_primary_metric() -> None:

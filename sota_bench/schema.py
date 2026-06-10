@@ -102,6 +102,17 @@ class BenchEntry:
     verified_at: str | None = None  # ISO date (YYYY-MM-DD) of that live check
     embargo: str | None = None  # human-readable embargo guard note
 
+    # --- Scoring-exclusion marker (optional) -----------------------------------
+    # ``excluded_from_scoring=True`` marks a row that is a PUBLIC DEMO / CALIBRATION
+    # item: it ships WITH its answer key (``ground_truth`` + ``fp_killer``) as a
+    # worked illustration and is PERMANENTLY non-scoreable (its labels are public
+    # and its evidence_date predates current model cutoffs, so it can never serve
+    # as a held-out test). This is a SCORING-correctness / documentation flag, NOT
+    # a security control: the do-not-leak guard is the publication firewall
+    # (a structural path-allowlist), which never trusts a per-row self-flag.
+    # Optional + default None so legacy rows validate unchanged.
+    excluded_from_scoring: bool | None = None
+
 
 @dataclass(frozen=True)
 class Prediction:
@@ -269,6 +280,7 @@ def validate_entry(d: dict[str, Any]) -> BenchEntry:
         verified_public=_optional_bool(d, "verified_public"),
         verified_at=_optional_iso_date(d, "verified_at"),
         embargo=_optional_str_or_none(d, "embargo"),
+        excluded_from_scoring=_optional_bool(d, "excluded_from_scoring"),
     )
 
 

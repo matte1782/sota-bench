@@ -1,5 +1,19 @@
 # decode_v1 - SEED (n=3, UNDERPOWERED, recall-only, NOT an admitted slice)
 
+> **PUBLIC DEMO / CALIBRATION SET. EXCLUDED FROM SCORING.**
+> These 3 rows are already-public, previously-disclosed decode findings, shipped
+> here WITH their answer keys (`ground_truth` + the decisive `fp_killer`) as a
+> worked illustration of the decode-incompleteness class and the field-enumeration
+> method. Every row carries `excluded_from_scoring: true`. They are PERMANENTLY
+> non-scoreable: their labels are public and their evidence dates predate current
+> model training cutoffs, so they can never serve as a held-out test. This is a
+> demonstration corpus, not a measurement. The held-out, SCORED corpus is governed
+> by `PROTOCOL.md`, is contamination-controlled by date (a finding is scored
+> against a model only if its `evidence_date` is strictly after that model's
+> training cutoff), and never ships its labels. Publishing these demo answer keys
+> does not contradict that: a demo set is public BY DESIGN precisely because it is
+> excluded from scoring.
+
 This directory holds the **seed** for the `decode` vertical of `sota_bench`. It is
 deliberately **outside `datasets/`** so CI (`tests/test_protocol.py`) does not treat
 it as a shipped slice, and it is **not** registered as admitted in `SLICES.md`

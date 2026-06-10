@@ -1,0 +1,46 @@
+name: ci
+
+# Runs the full test suite on every push and pull request. The suite includes the
+# publication-firewall red-team tests (tests/test_publication_firewall.py), so a
+# commit that adds an answer key (fp_killer / scored ground_truth) outside the
+# explicit publication allowlist FAILS CI. This is the "enforced in CI" half of the
+# publication firewall; the module itself is sota_bench/publication_firewall.py.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (core + dev extras, stdlib-only core)
+        run: pip install -e ".[dev]"
+      - name: Run tests (includes the publication-firewall red-team suite)
+        run: python -m pytest -q
+
+  firewall:
+    # A dedicated, fast, dependency-free run of the publication firewall, so the
+    # leak gate is visible as its own required check and runs even if the matrix
+    # above is skipped.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Publication firewall (no answer keys outside the allowlist)
+        run: python tests/test_publication_firewall.py

@@ -144,24 +144,29 @@ labeled POSITIVE items behind these counts, and the naive-vs-method baselines th
 turn on them, are WITHHELD PENDING COORDINATED DISCLOSURE and will be published
 once the underlying advisories are public.
 
-### Runtime baseline
+### Runtime baseline (a diagnostic, not a demonstrated edge over naive)
 
-A second, **dynamic** baseline that stands the target up, drives the
-agent/tool-dispatch path with a fresh per-run CSPRNG sentinel, and lets the
-runtime gating check fire (or not) against a live oracle. **On this small
-multi-finding subset the runtime method matches ground truth, and its one decisive
-correction flips the static method's lone false negative back to `vuln`:** a
-low-privilege member denied on the REST entitlement sibling reached owner-private
-content through the agent dispatch sink. Honest caveats, stated in the artifact and
-`PROTOCOL.md`: only part of the subset was truly live-reran in that session, the
-remaining verdicts rest on recorded evidence with no new sentinel minted, and the
-subset does **not** include, and therefore does not yet clear, the static method's
-other v1 error (the AnythingLLM false positive), whose runtime exoneration is
-future "expand" work. So this result demonstrates the runtime oracle correcting a
-static *false negative*; it is not a full re-scoring of the v1 slice. The
-per-target identities, the labeled POSITIVE corpus, and the naive-vs-method
-baselines behind this subset are WITHHELD PENDING COORDINATED DISCLOSURE and will
-be published once the underlying advisories are public.
+A second, **dynamic** baseline stands the target up, drives the agent/tool-dispatch
+path with a fresh per-run CSPRNG sentinel, and lets the runtime gating check fire (or
+not) against a live oracle. On this small multi-finding subset the runtime method
+matches ground truth, and its one decisive correction flips a static *false negative*
+back to `vuln`: a low-privilege member denied on the REST entitlement sibling reached
+owner-private content through the agent dispatch sink.
+
+Read honestly, that correction is narrower than it first looks, and we label runtime a
+**diagnostic, not an edge over a naive call**. The false negative it repaired was
+introduced by the static *method's* own extra skepticism; the **naive single call
+already flagged that same row `vuln`**. So on the one row that was truly re-run live,
+runtime's delta over naive is **zero**: it undid a mistake the method made and naive
+did not. Runtime has not been shown to beat a naive call, and it has not cleared the
+method's other v1 error (the AnythingLLM false *positive*), whose runtime exoneration
+remains future "expand" work. Two further caveats stated in the artifact and
+`PROTOCOL.md`: only part of the subset was truly live-reran (the rest rest on recorded
+evidence with no new sentinel minted), and this is not a full re-scoring of the v1
+slice. Runtime is a per-row validation technique under test here, not the benchmark's
+thesis. The per-target identities, the labeled POSITIVE corpus, and the naive-vs-method
+baselines behind this subset are WITHHELD PENDING COORDINATED DISCLOSURE and will be
+published once the underlying advisories are public.
 
 ## Differentiation
 
@@ -191,18 +196,37 @@ exact-band severity agreement versus security firms, and the small fraction of
 disclosed findings that reach a CVE/GHSA. `sota_bench` is built so the numbers it
 reports are of the *hand-assessed, reproducible* kind, not the estimated kind.
 
-## Durability: part of the corpus is intentionally private and dated
+## Durability: a dated corpus, a non-LLM oracle, and published losses
 
-The public `authz_v1` slice is the open, reproducible front door. But a portion of
-the labeled corpus is **held back, private and dated, by design**, and only the
-signed deltas (and aggregate metrics as context) are ever published from it. This
-is the durability mechanism: a benchmark whose every label is public leaks into
-training data and stops being a held-out test the moment it is indexed. Keeping a
-dated private split, each run stamped with a `dataset_fingerprint` so a published
-delta is attributable to a corpus version without revealing its contents, means
-each new frontier release is measured against genuinely unseen items. The
-private split also lets the benchmark carry high-impact instances that are not yet
-safe to disclose, without ever exposing them.
+The durable asset here is not secrecy. It is three things a stronger model cannot
+quietly erase:
+
+- **A deterministic, non-LLM differential oracle over a DATED corpus.** Each scored
+  item turns on a closed-form check (`fp_killer`) and a paired `secure` twin at the
+  same code location, graded by a pure function of labels and predictions (no
+  LLM-as-judge). A frontier agent can read the source and even execute it; it cannot
+  fabricate a non-LLM oracle's verdict, and it cannot train on a finding whose public
+  `evidence_date` postdates its training cutoff.
+- **Temporal contamination control, not a secret split.** A benchmark whose labels are
+  merely hidden is brittle and unverifiable: a reviewer cannot reproduce it, and the
+  hidden labels still leak the day anyone indexes them. Instead, the public `authz_v1`
+  slice is the open, reproducible front door, and contamination is controlled by DATE:
+  a finding is scored against a model M only if its `evidence_date` is strictly after
+  M's training cutoff ([`PROTOCOL.md`](PROTOCOL.md) L3). The same row can therefore be
+  fully public AND a valid held-out test for every model whose cutoff predates it. Each
+  run is stamped with a content-addressed `dataset_hash` so a published delta is
+  attributable to an exact corpus version.
+- **Published losses.** The headline is reported as-is, including where the method
+  LOSES to a naive single call (the `authz_v1` static baseline below). A method whose
+  edge erodes is published as eroded; the pre-registered SOTA loop is the mechanism
+  that says so, on schedule.
+
+There is a separate, disclosure-safety reason to hold a finding back: an UNFIXED
+advisory. An embargoed vulnerability sits in a private vault, never scored and never
+sent to a hosted model, until its advisory publishes, at which point it becomes a
+PUBLIC DATED row (verifiable, and contamination-controlled for every prior model).
+That vault is a coordinated-disclosure safeguard, not the durability mechanism, and
+nothing in it is ever the headline.
 
 ## Selected public findings
 
