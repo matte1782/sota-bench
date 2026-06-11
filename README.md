@@ -239,6 +239,7 @@ it ships.
 | finding | severity | identifier | advisory |
 |---|---|---|---|
 | dex | High 8.7 | GHSA-7qjx | [GHSA-7qjx](https://github.com/dexidp/dex/security/advisories/GHSA-7qjx-gp9h-65qj) |
+| Open WebUI | High 8.5 | CVE-2026-54008 | [CVE-2026-54008](https://github.com/open-webui/open-webui/security/advisories/GHSA-226f-f24g-524w) |
 | Open WebUI | High 7.3 | GHSA-3wgj | [GHSA-3wgj](https://github.com/advisories/GHSA-3wgj-c2hg-vm6q) |
 | MCP Registry | Mod 6.3 | CVE-2026-44430 | [CVE-2026-44430](https://github.com/advisories/GHSA-r48c-v28r-pf6v) |
 | GitHub MCP Server | Mod 6.0 | CVE-2026-48529 | [CVE-2026-48529](https://github.com/github/github-mcp-server/security/advisories/GHSA-pjp5-fpmr-3349) |
