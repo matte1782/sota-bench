@@ -246,6 +246,7 @@ it ships.
 | GitHub MCP Server | Mod 6.0 | CVE-2026-48529 | [CVE-2026-48529](https://github.com/github/github-mcp-server/security/advisories/GHSA-pjp5-fpmr-3349) |
 | Kirby | Mod 5.3 | CVE-2026-45334 | [CVE-2026-45334](https://github.com/getkirby/kirby/security/advisories/GHSA-39vq-49qm-r2mc) |
 | Outline | Mod | CVE-2026-43890 | [CVE-2026-43890](https://github.com/outline/outline/security/advisories/GHSA-gf8h-cv9v-q4fw) |
+| Google MCP Toolbox | Mod | PR #3324 | [PR #3324](https://github.com/googleapis/mcp-toolbox/pull/3324) |
 <!-- PUBLIC-FINDINGS:END -->
 
 Additional findings are in private coordination and are not listed until their
